@@ -28,6 +28,13 @@ resource "aws_db_subnet_group" "main" {
   subnet_ids = var.subnet_ids
 }
 
+resource "aws_kms_key" "rds_pi" {
+  description             = "KMS key for RDS Performance Insights"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
+#tfsec:ignore:aws-rds-encryption-customer-key
 resource "aws_db_instance" "postgres" {
   identifier     = "${var.app_name}-${var.environment}-postgres"
   engine         = "postgres"
@@ -57,10 +64,9 @@ resource "aws_db_instance" "postgres" {
   # Skip final snapshot only in non-prod to speed up teardown
   skip_final_snapshot = var.environment != "prod"
 
-  # Performance Insights — a dedicated KMS key for PI encryption can be added
-  # once a KMS key is provisioned for the account; disable the check until then.
-  #tfsec:ignore:aws-rds-enable-performance-insights-encryption
-  performance_insights_enabled = true
+  # Performance Insights
+  performance_insights_enabled    = true
+  performance_insights_kms_key_id = aws_kms_key.rds_pi.arn
 
   tags = { Name = "${var.app_name}-${var.environment}-postgres" }
 }

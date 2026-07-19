@@ -10,12 +10,20 @@ variable "environment" {
 # Receives S3 server-access logs from the files bucket.
 # Logging on this bucket itself is intentionally disabled to avoid a circular
 # dependency (a logging bucket cannot log to itself).
-#tfsec:ignore:aws-s3-enable-bucket-logging
-#tfsec:ignore:aws-s3-encryption-customer-key
-#tfsec:ignore:aws-s3-enable-versioning
+#checkov:skip=CKV_AWS_18:Access logging bucket does not require logging to avoid circular dependency
+#checkov:skip=CKV_AWS_145:Access logging bucket encryption uses standard S3-managed AES256 encryption rather than KMS CMK
+#checkov:skip=CKV_AWS_19:Access logging bucket encryption is managed by SSE-S3 (AES256) in a separate resource
+#tfsec:ignore:aws-s3-enable-bucket-logging tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket" "logs" {
   bucket = "${var.app_name}-access-logs-${var.environment}"
   tags   = { Name = "${var.app_name}-access-logs-${var.environment}" }
+}
+
+resource "aws_s3_bucket_versioning" "logs" {
+  bucket = aws_s3_bucket.logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "logs" {
@@ -27,6 +35,7 @@ resource "aws_s3_bucket_public_access_block" "logs" {
 }
 
 # AES256 (AWS-managed SSE) is acceptable here; a CMK can be added later.
+#checkov:skip=CKV_AWS_145:Access logging bucket encryption uses SSE-S3 (AES256) instead of KMS CMK
 #tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
   bucket = aws_s3_bucket.logs.id
@@ -40,6 +49,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
 # ── Files bucket ───────────────────────────────────────────────────────────────
 # tfsec evaluates the CMK check at the aws_s3_bucket level in addition to
 # the SSE configuration resource, so both require the ignore annotation.
+#checkov:skip=CKV_AWS_145:Files bucket encryption uses standard S3-managed AES256 encryption rather than KMS CMK
+#checkov:skip=CKV_AWS_19:Files bucket encryption is managed by SSE-S3 (AES256) in a separate resource
 #tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket" "files" {
   bucket = "${var.app_name}-files-${var.environment}"
@@ -48,6 +59,7 @@ resource "aws_s3_bucket" "files" {
 
 # AES256 (AWS-managed SSE) is used here. A customer-managed KMS key can be
 # introduced later if compliance requirements demand it.
+#checkov:skip=CKV_AWS_145:Files bucket encryption uses SSE-S3 (AES256) instead of KMS CMK
 #tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
   bucket = aws_s3_bucket.files.id

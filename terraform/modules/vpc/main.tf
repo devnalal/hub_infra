@@ -49,6 +49,7 @@ data "aws_availability_zones" "available" {
 # Flow logs ship to CloudWatch Logs. A CMK is not added here because it requires
 # a pre-existing KMS key with a cross-service key policy; add one at a later
 # hardening pass once a KMS key is provisioned for the account.
+#checkov:skip=CKV_AWS_158:Flow logs KMS encryption disabled until KMS key is provisioned
 #tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/${var.app_name}-${var.environment}-flow-logs"
