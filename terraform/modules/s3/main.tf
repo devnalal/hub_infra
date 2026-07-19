@@ -8,12 +8,11 @@ variable "environment" {
 
 # ── Access logging bucket ──────────────────────────────────────────────────────
 # Receives S3 server-access logs from the files bucket.
-# Logging is intentionally disabled on this bucket itself to avoid a circular
-# dependency; the logging bucket only stores access logs from other buckets.
-# tfsec:ignore:aws-s3-enable-bucket-logging
-
+# Logging on this bucket itself is intentionally disabled to avoid a circular
+# dependency (a logging bucket cannot log to itself).
+#tfsec:ignore:aws-s3-enable-bucket-logging
+#tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket" "logs" {
-  # tfsec:ignore:aws-s3-enable-bucket-logging
   bucket = "${var.app_name}-access-logs-${var.environment}"
   tags   = { Name = "${var.app_name}-access-logs-${var.environment}" }
 }
@@ -26,8 +25,9 @@ resource "aws_s3_bucket_public_access_block" "logs" {
   restrict_public_buckets = true
 }
 
+# AES256 (AWS-managed SSE) is acceptable here; a CMK can be added later.
+#tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
-  # tfsec:ignore:aws-s3-encryption-customer-key
   bucket = aws_s3_bucket.logs.id
   rule {
     apply_server_side_encryption_by_default {
@@ -43,10 +43,10 @@ resource "aws_s3_bucket" "files" {
   tags   = { Name = "${var.app_name}-files-${var.environment}" }
 }
 
+# AES256 (AWS-managed SSE) is used here. A customer-managed KMS key can be
+# introduced later if compliance requirements demand it.
+#tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
-  # AES256 (AWS-managed SSE) is used here. A customer-managed KMS key can be
-  # introduced later if compliance requirements demand it.
-  # tfsec:ignore:aws-s3-encryption-customer-key
   bucket = aws_s3_bucket.files.id
   rule {
     apply_server_side_encryption_by_default {

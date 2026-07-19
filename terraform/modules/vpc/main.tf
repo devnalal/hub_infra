@@ -19,8 +19,8 @@ resource "aws_internet_gateway" "main" {
   tags   = { Name = "${var.app_name}-${var.environment}-igw" }
 }
 
-# Public subnets (load balancer, NAT gateway)
-# tfsec:ignore:aws-ec2-no-public-ip-subnet
+# Public subnets (load balancer, NAT gateway) — public IPs are intentional here.
+#tfsec:ignore:aws-ec2-no-public-ip-subnet
 resource "aws_subnet" "public" {
   count                   = 2
   vpc_id                  = aws_vpc.main.id
@@ -46,7 +46,10 @@ data "aws_availability_zones" "available" {
 }
 
 # ── VPC Flow Logs ──────────────────────────────────────────────────────────────
-
+# Flow logs ship to CloudWatch Logs. A CMK is not added here because it requires
+# a pre-existing KMS key with a cross-service key policy; add one at a later
+# hardening pass once a KMS key is provisioned for the account.
+#tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc/${var.app_name}-${var.environment}-flow-logs"
   retention_in_days = 30

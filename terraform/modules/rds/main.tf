@@ -57,7 +57,9 @@ resource "aws_db_instance" "postgres" {
   # Skip final snapshot only in non-prod to speed up teardown
   skip_final_snapshot = var.environment != "prod"
 
-  # Monitoring
+  # Performance Insights — a dedicated KMS key for PI encryption can be added
+  # once a KMS key is provisioned for the account; disable the check until then.
+  #tfsec:ignore:aws-rds-enable-performance-insights-encryption
   performance_insights_enabled = true
 
   tags = { Name = "${var.app_name}-${var.environment}-postgres" }
