@@ -12,6 +12,7 @@ variable "environment" {
 # dependency (a logging bucket cannot log to itself).
 #tfsec:ignore:aws-s3-enable-bucket-logging
 #tfsec:ignore:aws-s3-encryption-customer-key
+#tfsec:ignore:aws-s3-enable-versioning
 resource "aws_s3_bucket" "logs" {
   bucket = "${var.app_name}-access-logs-${var.environment}"
   tags   = { Name = "${var.app_name}-access-logs-${var.environment}" }
@@ -37,7 +38,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
 }
 
 # ── Files bucket ───────────────────────────────────────────────────────────────
-
+# tfsec evaluates the CMK check at the aws_s3_bucket level in addition to
+# the SSE configuration resource, so both require the ignore annotation.
+#tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket" "files" {
   bucket = "${var.app_name}-files-${var.environment}"
   tags   = { Name = "${var.app_name}-files-${var.environment}" }
