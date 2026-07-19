@@ -110,12 +110,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "files" {
     id     = "archive-old-files"
     status = "Enabled"
 
+    filter { prefix = "uploads/" }
+
     transition {
       days          = 90
       storage_class = "GLACIER"
     }
+  }
 
-    filter { prefix = "uploads/" }
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+
+    filter {}
 
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
