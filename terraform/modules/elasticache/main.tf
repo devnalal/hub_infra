@@ -34,6 +34,9 @@ resource "aws_elasticache_cluster" "redis" {
   subnet_group_name    = aws_elasticache_subnet_group.main.name
   security_group_ids   = [var.sg_id]
 
+  # Retain daily snapshots for 7 days to allow recovery
+  snapshot_retention_limit = 7
+
   tags = { Name = "${var.app_name}-${var.environment}-redis" }
 }
 

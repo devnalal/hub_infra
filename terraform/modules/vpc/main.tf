@@ -20,6 +20,7 @@ resource "aws_internet_gateway" "main" {
 }
 
 # Public subnets (load balancer, NAT gateway)
+# tfsec:ignore:aws-ec2-no-public-ip-subnet
 resource "aws_subnet" "public" {
   count                   = 2
   vpc_id                  = aws_vpc.main.id
@@ -44,32 +45,86 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Security group — RDS PostgreSQL
+# ── VPC Flow Logs ──────────────────────────────────────────────────────────────
+
+resource "aws_cloudwatch_log_group" "flow_logs" {
+  name              = "/aws/vpc/${var.app_name}-${var.environment}-flow-logs"
+  retention_in_days = 30
+}
+
+resource "aws_iam_role" "flow_logs" {
+  name = "${var.app_name}-${var.environment}-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  name = "${var.app_name}-${var.environment}-flow-logs-policy"
+  role = aws_iam_role.flow_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = aws_cloudwatch_log_group.flow_logs.arn
+    }]
+  })
+}
+
+resource "aws_flow_log" "main" {
+  vpc_id          = aws_vpc.main.id
+  traffic_type    = "ALL"
+  iam_role_arn    = aws_iam_role.flow_logs.arn
+  log_destination = aws_cloudwatch_log_group.flow_logs.arn
+}
+
+# ── Security group — RDS PostgreSQL ───────────────────────────────────────────
+
 resource "aws_security_group" "rds" {
-  name   = "${var.app_name}-${var.environment}-rds-sg"
-  vpc_id = aws_vpc.main.id
+  name        = "${var.app_name}-${var.environment}-rds-sg"
+  description = "Allow PostgreSQL access from within the VPC only"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "PostgreSQL from VPC"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"] # only from within VPC
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   egress {
+    description = "Allow outbound within VPC only"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 }
 
-# Security group — ElastiCache Redis
+# ── Security group — ElastiCache Redis ────────────────────────────────────────
+
 resource "aws_security_group" "redis" {
-  name   = "${var.app_name}-${var.environment}-redis-sg"
-  vpc_id = aws_vpc.main.id
+  name        = "${var.app_name}-${var.environment}-redis-sg"
+  description = "Allow Redis access from within the VPC only"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "Redis from VPC"
     from_port   = 6379
     to_port     = 6379
     protocol    = "tcp"
@@ -77,10 +132,11 @@ resource "aws_security_group" "redis" {
   }
 
   egress {
+    description = "Allow outbound within VPC only"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 }
 
