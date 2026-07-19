@@ -28,10 +28,10 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.15.8
+          terraform_version: 1.10.5
 
-      - name: Terraform Format
-        run: terraform fmt -recursive
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
 
       - name: Terraform Init
         run: terraform init -backend=false
@@ -82,7 +82,16 @@ jobs:
         run: docker build -t cixiohub-nginx ./nginx
 
       - name: Validate Nginx Configuration Syntax
+        # All upstream hostnames defined in nginx.conf must be resolvable at
+        # validation time. In CI there is no Docker network, so we stub every
+        # upstream service to the loopback address with --add-host flags.
         run: |
           docker run --rm \
             --add-host backend:127.0.0.1 \
+            --add-host frontend:127.0.0.1 \
+            --add-host ai:127.0.0.1 \
+            --add-host notify:127.0.0.1 \
+            --add-host rabbitmq:127.0.0.1 \
+            --add-host minio:127.0.0.1 \
+            --add-host mailhog:127.0.0.1 \
             cixiohub-nginx nginx -t

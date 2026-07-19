@@ -1,5 +1,10 @@
-variable "app_name" { type = string }
-variable "environment" { type = string }
+variable "app_name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
 
 resource "aws_s3_bucket" "files" {
   bucket = "${var.app_name}-files-${var.environment}"
@@ -38,5 +43,10 @@ resource "aws_s3_bucket_public_access_block" "files" {
   restrict_public_buckets = true
 }
 
-output "bucket_name" { value = aws_s3_bucket.files.bucket }
-output "bucket_arn" { value = aws_s3_bucket.files.arn }
+output "bucket_name" {
+  value = aws_s3_bucket.files.bucket
+}
+
+output "bucket_arn" {
+  value = aws_s3_bucket.files.arn
+}

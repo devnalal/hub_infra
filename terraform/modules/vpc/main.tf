@@ -1,5 +1,10 @@
-variable "app_name" { type = string }
-variable "environment" { type = string }
+variable "app_name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
 
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
@@ -79,8 +84,22 @@ resource "aws_security_group" "redis" {
   }
 }
 
-output "vpc_id" { value = aws_vpc.main.id }
-output "public_subnet_ids" { value = aws_subnet.public[*].id }
-output "private_subnet_ids" { value = aws_subnet.private[*].id }
-output "rds_sg_id" { value = aws_security_group.rds.id }
-output "redis_sg_id" { value = aws_security_group.redis.id }
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "public_subnet_ids" {
+  value = aws_subnet.public[*].id
+}
+
+output "private_subnet_ids" {
+  value = aws_subnet.private[*].id
+}
+
+output "rds_sg_id" {
+  value = aws_security_group.rds.id
+}
+
+output "redis_sg_id" {
+  value = aws_security_group.redis.id
+}
