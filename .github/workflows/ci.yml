@@ -85,4 +85,5 @@ jobs:
         run: docker build -t cixiohub-nginx ./nginx
 
       - name: Validate Nginx Configuration Syntax
-        run: docker run --rm cixiohub-nginx nginx -t
+        run: |
+          docker run --rm --add-host backend:127.0.0.1 cixiohub-nginx nginx -t
