@@ -14,6 +14,10 @@ resource "aws_vpc" "main" {
   tags = { Name = "${var.app_name}-${var.environment}-vpc" }
 }
 
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+}
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.app_name}-${var.environment}-igw" }
@@ -22,6 +26,7 @@ resource "aws_internet_gateway" "main" {
 # Public subnets (load balancer, NAT gateway) — public IPs are intentional here.
 #tfsec:ignore:aws-ec2-no-public-ip-subnet
 resource "aws_subnet" "public" {
+  #checkov:skip=CKV_AWS_130:Public subnets must map public IPs on launch by design.
   count                   = 2
   vpc_id                  = aws_vpc.main.id
   cidr_block              = cidrsubnet("10.0.0.0/16", 8, count.index)
@@ -49,11 +54,11 @@ data "aws_availability_zones" "available" {
 # Flow logs ship to CloudWatch Logs. A CMK is not added here because it requires
 # a pre-existing KMS key with a cross-service key policy; add one at a later
 # hardening pass once a KMS key is provisioned for the account.
-#checkov:skip=CKV_AWS_158:Flow logs KMS encryption disabled until KMS key is provisioned
 #tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "flow_logs" {
+  #checkov:skip=CKV_AWS_158:Flow logs KMS encryption disabled until KMS key is provisioned
   name              = "/aws/vpc/${var.app_name}-${var.environment}-flow-logs"
-  retention_in_days = 30
+  retention_in_days = 365
 }
 
 resource "aws_iam_role" "flow_logs" {
@@ -99,6 +104,7 @@ resource "aws_flow_log" "main" {
 # ── Security group — RDS PostgreSQL ───────────────────────────────────────────
 
 resource "aws_security_group" "rds" {
+  #checkov:skip=CKV2_AWS_5:Security group is attached to RDS database in another module.
   name        = "${var.app_name}-${var.environment}-rds-sg"
   description = "Allow PostgreSQL access from within the VPC only"
   vpc_id      = aws_vpc.main.id
@@ -123,6 +129,7 @@ resource "aws_security_group" "rds" {
 # ── Security group — ElastiCache Redis ────────────────────────────────────────
 
 resource "aws_security_group" "redis" {
+  #checkov:skip=CKV2_AWS_5:Security group is attached to ElastiCache cluster in another module.
   name        = "${var.app_name}-${var.environment}-redis-sg"
   description = "Allow Redis access from within the VPC only"
   vpc_id      = aws_vpc.main.id
